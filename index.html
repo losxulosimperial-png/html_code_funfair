@@ -636,8 +636,9 @@
     const desfaseGastos = (pagadoA + pagadoAmbos / 2) - mitad;
 
     // Cobra = mitad del beneficio + devolución íntegra del fondo propio + ajuste por gastos adelantados
-    const cobraA = porSocio + fondoA + fondoAmbos / 2 - desfaseGastos;
-    const cobraB = porSocio + fondoB + fondoAmbos / 2 + desfaseGastos;
+    // desfaseGastos > 0 significa que A adelantó más → A cobra más, B cobra menos
+    const cobraA = porSocio + fondoA + fondoAmbos / 2 + desfaseGastos;
+    const cobraB = porSocio + fondoB + fondoAmbos / 2 - desfaseGastos;
 
     document.getElementById('l-total').textContent = fmt(beneficio);
     document.getElementById('l-total').className = 'liq-val ' + (beneficio >= 0 ? 'pos' : 'neg');
