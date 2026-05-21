@@ -411,8 +411,8 @@
         </select>
         <select id="g-pagador">
           <option value="ambos">Ambos</option>
-          <option value="Socio A">Pablo</option>
-          <option value="Socio B">Fran</option>
+          <option value="pablo">Pablo</option>
+          <option value="fran">Fran</option>
         </select>
         <button class="btn-add" onclick="addGasto()" id="btn-gasto">+ Añadir</button>
       </div>
@@ -426,9 +426,15 @@
 <!-- LIQUIDACIÓN -->
 <div class="liq-bar" id="liq-bar">
   <div class="liq-item"><div class="liq-label">Beneficio total</div><div class="liq-val pos" id="l-total">0,00 €</div></div>
-  <div class="liq-item"><div class="liq-label">Socio A cobra</div><div class="liq-val" id="l-a">0,00 €</div></div>
-  <div class="liq-item"><div class="liq-label">Socio B cobra</div><div class="liq-val" id="l-b">0,00 €</div></div>
+  <div class="liq-item"><div class="liq-label" id="l-label-a">Pablo cobra</div><div class="liq-val" id="l-a">0,00 €</div></div>
+  <div class="liq-item"><div class="liq-label" id="l-label-b">Fran cobra</div><div class="liq-val" id="l-b">0,00 €</div></div>
   <div class="deuda-pill ok" id="l-ajuste">Todo cuadrado</div>
+  <button class="btn-secondary" style="padding:5px 12px;font-size:11px;margin-left:auto" onclick="toggleDetalle()">desglose ▾</button>
+</div>
+
+<!-- DETALLE LIQUIDACIÓN -->
+<div id="liq-detalle" style="display:none;border-top:1px solid var(--border);background:var(--surface);padding:1.5rem;">
+  <div id="liq-pasos"></div>
 </div>
 
 <!-- CONFIG MODAL -->
@@ -628,8 +634,8 @@
     ms.className = 'metric-value ' + (porSocio >= 0 ? 'pos' : 'neg');
 
     // Liquidación — gastos
-    const pagadoA = _gastos.filter(g => g.pagador === socioA || g.pagador === 'Socio A').reduce((s,g) => s + g.imp, 0);
-    const pagadoB = _gastos.filter(g => g.pagador === socioB || g.pagador === 'Socio B').reduce((s,g) => s + g.imp, 0);
+    const pagadoA = _gastos.filter(g => g.pagador === socioA || g.pagador === 'Socio A' || g.pagador === 'pablo').reduce((s,g) => s + g.imp, 0);
+    const pagadoB = _gastos.filter(g => g.pagador === socioB || g.pagador === 'Socio B' || g.pagador === 'fran').reduce((s,g) => s + g.imp, 0);
     const pagadoAmbos = _gastos.filter(g => g.pagador === 'ambos' || g.pagador === 'Ambos').reduce((s,g) => s + g.imp, 0);
 
     const mitad = gastos / 2;
@@ -658,8 +664,53 @@
     }
 
     // actualizar nombres en liquidación
-    document.querySelector('#liq-bar .liq-item:nth-child(2) .liq-label').textContent = socioA + ' cobra';
-    document.querySelector('#liq-bar .liq-item:nth-child(3) .liq-label').textContent = socioB + ' cobra';
+    document.getElementById('l-label-a').textContent = socioA + ' cobra';
+    document.getElementById('l-label-b').textContent = socioB + ' cobra';
+
+    // Calcular desglose paso a paso
+    const cajafisica = _caja.reduce((s,c) => c.tipo === 'entrada' ? s + c.imp : c.tipo === 'salida' ? s - c.imp : s + c.imp, 0);
+    // De la caja física: devolver fondos primero, luego repartir lo que queda
+    const cajaSinFondos = cajafisica - fondoA - fondoB - fondoAmbos;
+    const deCajaA = fondoA + fondoAmbos / 2 + cajaSinFondos / 2;
+    const deCajaB = fondoB + fondoAmbos / 2 + cajaSinFondos / 2;
+    // Transferencia entre socios por gastos adelantados de bolsillo
+    // (gastos no pagados desde caja sino de bolsillo propio)
+    const transf = Math.abs(desfaseGastos);
+    const transfDe = desfaseGastos > 0 ? socioB : socioA;
+    const transfA = desfaseGastos > 0 ? socioA : socioB;
+
+    const pasos = [];
+    pasos.push({ n: '1', texto: `Caja física al cierre`, valor: fmt(cajafisica) });
+    if (fondoA > 0 || fondoB > 0 || fondoAmbos > 0) {
+      if (fondoA > 0) pasos.push({ n: '2', texto: `${socioA} recupera su fondo de caja`, valor: fmt(fondoA) });
+      if (fondoB > 0) pasos.push({ n: fondoA > 0 ? '3' : '2', texto: `${socioB} recupera su fondo de caja`, valor: fmt(fondoB) });
+      if (fondoAmbos > 0) pasos.push({ n: '·', texto: `Fondo conjunto → ${fmt(fondoAmbos/2)} cada uno`, valor: fmt(fondoAmbos) });
+    }
+    pasos.push({ n: '·', texto: `Resto de caja se reparte al 50%`, valor: fmt(cajaSinFondos / 2) + ' c/u' });
+    if (transf > 0.01) {
+      pasos.push({ n: '·', texto: `${transfDe} transfiere a ${transfA} por gastos adelantados`, valor: fmt(transf) });
+    }
+    pasos.push({ n: '✓', texto: `${socioA} se lleva en total`, valor: fmt(cobraA), highlight: true });
+    pasos.push({ n: '✓', texto: `${socioB} se lleva en total`, valor: fmt(cobraB), highlight: true });
+
+    document.getElementById('liq-pasos').innerHTML = pasos.map(p => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);${p.highlight ? 'border-bottom:none;' : ''}">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text-muted);width:16px;text-align:center;flex-shrink:0">${p.n}</span>
+        <span style="flex:1;font-size:14px;color:${p.highlight ? 'var(--text)' : 'var(--text-muted)'};font-weight:${p.highlight ? '500' : '400'}">${p.texto}</span>
+        <span style="font-family:var(--mono);font-size:14px;color:${p.highlight ? 'var(--accent)' : 'var(--text)'};font-weight:${p.highlight ? '500' : '400'}">${p.valor}</span>
+      </div>`).join('');
+  }
+
+  window.toggleDetalle = function() {
+    const el = document.getElementById('liq-detalle');
+    const btn = document.querySelector('[onclick="toggleDetalle()"]');
+    if (el.style.display === 'none') {
+      el.style.display = 'block';
+      btn.textContent = 'desglose ▴';
+    } else {
+      el.style.display = 'none';
+      btn.textContent = 'desglose ▾';
+    }
   }
 
   function esc(s) {
