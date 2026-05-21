@@ -718,12 +718,15 @@
   }
 
   // Inicializar
-  const cfg = loadCfg();
-  if (cfg.apiKey && cfg.projectId) {
-    connect(cfg);
-  } else {
-    showConfig();
-  }
+  const cfg = {
+    apiKey: "AIzaSyBNv_DhjXi0We_BVpT7TUqBAdLLSH8BN8A",
+    projectId: "feria-agosto",
+    appId: "1:59258069054:web:401cf2ec24436fa437f16f",
+    socioA: "Pablo",
+    socioB: "Fran"
+  };
+  saveCfgLocal(cfg);
+  connect(cfg);
 
   // Enter para añadir
   document.getElementById('c-imp').addEventListener('keydown', e => { if (e.key === 'Enter') window.addCaja(); });
