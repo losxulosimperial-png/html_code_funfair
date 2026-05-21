@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Feria — Gestión de caja</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f0c;
+    --surface: #161712;
+    --surface2: #1e1f1a;
+    --border: #2a2b24;
+    --accent: #c8f04a;
+    --accent-dim: #8aad1f;
+    --text: #e8e9e0;
+    --text-muted: #6b6c62;
+    --text-dim: #3a3b32;
+    --red: #f04a4a;
+    --red-dim: #2a1414;
+    --green: #4af07a;
+    --green-dim: #0f2a1a;
+    --amber: #f0c44a;
+    --amber-dim: #2a2014;
+    --blue: #4ab4f0;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 52px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--text-dim);
+    display: inline-block;
+    margin-right: 6px;
+    transition: background 0.3s;
+  }
+  .status-dot.connected { background: var(--green); }
+  #status-label { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+
+  /* METRICS BAR */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+  .metric {
+    padding: 1.25rem 1.5rem;
+    border-right: 1px solid var(--border);
+  }
+  .metric:last-child { border-right: none; }
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .metric-value.pos { color: var(--accent); }
+  .metric-value.neg { color: var(--red); }
+
+  /* LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    min-height: calc(100vh - 52px - 73px);
+  }
+
+  .panel {
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+  }
+  .panel:last-child { border-right: none; }
+
+  .panel-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .panel-total {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  /* FORM */
+  .form-area {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .form-row { display: flex; gap: 8px; }
+
+  input[type="text"], input[type="number"], select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  input[type="text"]:focus, input[type="number"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  input[type="text"] { flex: 1; }
+  input[type="number"] { width: 90px; flex-shrink: 0; }
+  select { flex-shrink: 0; background-image: none; }
+  select option { background: var(--surface2); }
+
+  .btn-add {
+    background: var(--accent);
+    color: #0e0f0c;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+  }
+  .btn-add:hover { opacity: 0.85; }
+  .btn-add:disabled { opacity: 0.3; cursor: default; }
+
+  .hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* LIST */
+  .list-area { flex: 1; overflow-y: auto; }
+  .empty {
+    padding: 3rem 1.5rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  .list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 1.5rem;
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+  .item-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-entrada { background: var(--green-dim); color: var(--green); }
+  .badge-salida  { background: var(--red-dim);   color: var(--red); }
+  .badge-fondo   { background: #142233;            color: var(--blue); }
+
+  .badge-montaje    { background: #1a1a2e; color: #8888ff; }
+  .badge-producto   { background: var(--green-dim); color: var(--green); }
+  .badge-suministros{ background: #1a2514; color: #88cc44; }
+  .badge-personal   { background: #2a1433; color: #cc88ff; }
+  .badge-publicidad { background: var(--amber-dim); color: var(--amber); }
+  .badge-otro       { background: var(--surface2); color: var(--text-muted); }
+
+  .item-desc { flex: 1; font-size: 14px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .item-who  { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+  .item-amount {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    flex-shrink: 0;
+    min-width: 70px;
+    text-align: right;
+  }
+  .item-amount.pos { color: var(--accent); }
+  .item-amount.neg { color: var(--red); }
+  .item-time { font-family: var(--mono); font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
+  .btn-del {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 2px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .btn-del:hover { color: var(--red); }
+
+  /* LIQUIDACION */
+  .liq-bar {
+    border-top: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--surface);
+  }
+  .liq-item { display: flex; flex-direction: column; gap: 2px; }
+  .liq-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .liq-val { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--text); }
+  .liq-val.pos { color: var(--accent); }
+  .liq-val.neg { color: var(--red); }
+
+  .deuda-pill {
+    margin-left: auto;
+    background: var(--amber-dim);
+    color: var(--amber);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .deuda-pill.ok { background: var(--green-dim); color: var(--green); }
+
+  /* CONFIG MODAL */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    width: 90%;
+    max-width: 480px;
+  }
+  .modal h2 { font-family: var(--mono); font-size: 13px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.25rem; }
+  .modal label { display: block; font-family: var(--mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; margin-top: 1rem; }
+  .modal input[type="text"] { width: 100%; }
+  .modal p { font-size: 13px; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.6; }
+  .modal a { color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; margin-top: 1.5rem; }
+  .btn-primary {
+    background: var(--accent); color: #0e0f0c;
+    border: none; border-radius: 6px;
+    padding: 10px 20px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    cursor: pointer; flex: 1;
+  }
+  .btn-secondary {
+    background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 20px;
+    font-family: var(--mono); font-size: 12px;
+    cursor: pointer;
+  }
+
+  @media (max-width: 640px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .layout { grid-template-columns: 1fr; }
+    .panel { border-right: none; border-bottom: 1px solid var(--border); }
+    .metric { padding: 1rem; }
+    .metric-value { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⬡ Feria</span>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span><span class="status-dot" id="dot"></span><span id="status-label">desconectado</span></span>
+    <button class="btn-secondary" style="padding:5px 12px;font-size:11px" onclick="showConfig()">config</button>
+  </div>
+</header>
+
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-label">Ingresos</div>
+    <div class="metric-value pos" id="m-ingresos">0,00 €</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Gastos</div>
+    <div class="metric-value neg" id="m-gastos">0,00 €</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Beneficio</div>
+    <div class="metric-value" id="m-beneficio">0,00 €</div>
+  </div>
+  <div class="metric">
+    <div class="metric-label">Por socio</div>
+    <div class="metric-value" id="m-socio">0,00 €</div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- CAJA -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Caja</span>
+      <span class="panel-total" id="caja-saldo">Saldo: 0,00 €</span>
+    </div>
+    <div class="form-area">
+      <div class="form-row">
+        <input type="text" id="c-desc" placeholder="Concepto">
+        <input type="number" id="c-imp" placeholder="€" min="0" step="0.01">
+        <select id="c-tipo">
+          <option value="entrada">Entrada</option>
+          <option value="fondo">Fondo</option>
+          <option value="salida">Salida</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <button class="btn-add" onclick="addCaja()" id="btn-caja">+ Añadir</button>
+        <span class="hint">Fondo = cambio inicial, no cuenta como ingreso</span>
+      </div>
+    </div>
+    <div class="list-area" id="caja-list">
+      <div class="empty">sin movimientos</div>
+    </div>
+  </div>
+
+  <!-- GASTOS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Gastos</span>
+      <span class="panel-total" id="gastos-total">Total: 0,00 €</span>
+    </div>
+    <div class="form-area">
+      <div class="form-row">
+        <input type="text" id="g-desc" placeholder="Concepto">
+        <input type="number" id="g-imp" placeholder="€" min="0" step="0.01">
+      </div>
+      <div class="form-row">
+        <select id="g-cat">
+          <option value="producto">Producto</option>
+          <option value="montaje">Montaje</option>
+          <option value="suministros">Suministros</option>
+          <option value="personal">Personal</option>
+          <option value="publicidad">Publicidad</option>
+          <option value="otro">Otro</option>
+        </select>
+        <select id="g-pagador">
+          <option value="ambos">Ambos</option>
+          <option value="Socio A">Socio A</option>
+          <option value="Socio B">Socio B</option>
+        </select>
+        <button class="btn-add" onclick="addGasto()" id="btn-gasto">+ Añadir</button>
+      </div>
+    </div>
+    <div class="list-area" id="gastos-list">
+      <div class="empty">sin gastos</div>
+    </div>
+  </div>
+</div>
+
+<!-- LIQUIDACIÓN -->
+<div class="liq-bar" id="liq-bar">
+  <div class="liq-item"><div class="liq-label">Beneficio total</div><div class="liq-val pos" id="l-total">0,00 €</div></div>
+  <div class="liq-item"><div class="liq-label">Socio A cobra</div><div class="liq-val" id="l-a">0,00 €</div></div>
+  <div class="liq-item"><div class="liq-label">Socio B cobra</div><div class="liq-val" id="l-b">0,00 €</div></div>
+  <div class="deuda-pill ok" id="l-ajuste">Todo cuadrado</div>
+</div>
+
+<!-- CONFIG MODAL -->
+<div class="modal-bg" id="modal" style="display:none">
+  <div class="modal">
+    <h2>Configuración Firebase</h2>
+    <p>Necesitas un proyecto Firebase gratuito. <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → nuevo proyecto → Firestore Database (modo test) → Configuración del proyecto → SDK web → copia los valores aquí.</p>
+    <label>AIzaSyBNv_DhjXi0We_BVpT7TUqBAdLLSH8BN8A</label>
+    <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
+    <label>feria-agosto</label>
+    <input type="text" id="cfg-projectId" placeholder="mi-feria-2025">
+    <label>1:59258069054:web:401cf2ec24436fa437f16f</label>
+    <input type="text" id="cfg-appId" placeholder="1:123:web:abc">
+    <label>Pablo</label>
+    <input type="text" id="cfg-socioA" placeholder="Socio A">
+    <label>Fran</label>
+    <input type="text" id="cfg-socioB" placeholder="Socio B">
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="hideConfig()">Cancelar</button>
+      <button class="btn-primary" onclick="saveConfig()">Guardar y conectar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  window._fb = { db: null, unsub: [] };
+
+  const CFG_KEY = 'feria_cfg';
+
+  function loadCfg() {
+    try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveCfgLocal(cfg) {
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  }
+
+  window.showConfig = function() {
+    const cfg = loadCfg();
+    document.getElementById('cfg-apiKey').value = cfg.apiKey || '';
+    document.getElementById('cfg-projectId').value = cfg.projectId || '';
+    document.getElementById('cfg-appId').value = cfg.appId || '';
+    document.getElementById('cfg-socioA').value = cfg.socioA || 'Socio A';
+    document.getElementById('cfg-socioB').value = cfg.socioB || 'Socio B';
+    document.getElementById('modal').style.display = 'flex';
+  }
+  window.hideConfig = function() {
+    document.getElementById('modal').style.display = 'none';
+  }
+  window.saveConfig = function() {
+    const cfg = {
+      apiKey: document.getElementById('cfg-apiKey').value.trim(),
+      projectId: document.getElementById('cfg-projectId').value.trim(),
+      appId: document.getElementById('cfg-appId').value.trim(),
+      socioA: document.getElementById('cfg-socioA').value.trim() || 'Socio A',
+      socioB: document.getElementById('cfg-socioB').value.trim() || 'Socio B',
+    };
+    saveCfgLocal(cfg);
+    hideConfig();
+    connect(cfg);
+  }
+
+  function setStatus(connected) {
+    document.getElementById('dot').className = 'status-dot' + (connected ? ' connected' : '');
+    document.getElementById('status-label').textContent = connected ? 'en vivo' : 'desconectado';
+  }
+
+  function fmt(n) {
+    return n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  }
+
+  let _caja = [];
+  let _gastos = [];
+
+  function connect(cfg) {
+    if (!cfg.apiKey || !cfg.projectId) { showConfig(); return; }
+    window._fb.unsub.forEach(u => u());
+    try {
+      const app = initializeApp({ apiKey: cfg.apiKey, authDomain: cfg.projectId + '.firebaseapp.com', projectId: cfg.projectId, appId: cfg.appId }, 'feria-' + Date.now());
+      const db = getFirestore(app);
+      window._fb.db = db;
+
+      const unsubCaja = onSnapshot(collection(db, 'caja'), snap => {
+        _caja = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.ts?.seconds||0) - (b.ts?.seconds||0));
+        renderCaja();
+        renderMetrics();
+      });
+      const unsubGastos = onSnapshot(collection(db, 'gastos'), snap => {
+        _gastos = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.ts?.seconds||0) - (b.ts?.seconds||0));
+        renderGastos();
+        renderMetrics();
+      });
+      window._fb.unsub = [unsubCaja, unsubGastos];
+      setStatus(true);
+    } catch(e) {
+      setStatus(false);
+      alert('Error conectando a Firebase: ' + e.message);
+    }
+  }
+
+  window.addCaja = async function() {
+    const desc = document.getElementById('c-desc').value.trim();
+    const imp = parseFloat(document.getElementById('c-imp').value);
+    const tipo = document.getElementById('c-tipo').value;
+    if (!desc || isNaN(imp) || imp <= 0) return;
+    if (!window._fb.db) { alert('Primero configura Firebase en "config"'); return; }
+    const btn = document.getElementById('btn-caja');
+    btn.disabled = true;
+    await addDoc(collection(window._fb.db, 'caja'), { desc, imp, tipo, ts: serverTimestamp() });
+    document.getElementById('c-desc').value = '';
+    document.getElementById('c-imp').value = '';
+    btn.disabled = false;
+  }
+
+  window.addGasto = async function() {
+    const desc = document.getElementById('g-desc').value.trim();
+    const imp = parseFloat(document.getElementById('g-imp').value);
+    const cat = document.getElementById('g-cat').value;
+    const pagador = document.getElementById('g-pagador').value;
+    if (!desc || isNaN(imp) || imp <= 0) return;
+    if (!window._fb.db) { alert('Primero configura Firebase en "config"'); return; }
+    const btn = document.getElementById('btn-gasto');
+    btn.disabled = true;
+    await addDoc(collection(window._fb.db, 'gastos'), { desc, imp, cat, pagador, ts: serverTimestamp() });
+    document.getElementById('g-desc').value = '';
+    document.getElementById('g-imp').value = '';
+    btn.disabled = false;
+  }
+
+  window.delItem = async function(col, id) {
+    if (!window._fb.db) return;
+    await deleteDoc(doc(window._fb.db, col, id));
+  }
+
+  function renderCaja() {
+    const cfg = loadCfg();
+    const el = document.getElementById('caja-list');
+    if (_caja.length === 0) { el.innerHTML = '<div class="empty">sin movimientos</div>'; return; }
+    el.innerHTML = _caja.map(c => `
+      <div class="list-item">
+        <span class="item-badge badge-${c.tipo}">${c.tipo}</span>
+        <span class="item-desc">${esc(c.desc)}</span>
+        <span class="item-amount ${c.tipo === 'entrada' ? 'pos' : c.tipo === 'salida' ? 'neg' : ''}">${fmt(c.imp)}</span>
+        <button class="btn-del" onclick="delItem('caja','${c.id}')" title="Eliminar">×</button>
+      </div>`).join('');
+    const saldo = _caja.reduce((s,c) => c.tipo === 'entrada' ? s + c.imp : c.tipo === 'salida' ? s - c.imp : s + c.imp, 0);
+    document.getElementById('caja-saldo').textContent = 'Saldo físico: ' + fmt(saldo);
+  }
+
+  function renderGastos() {
+    const el = document.getElementById('gastos-list');
+    if (_gastos.length === 0) { el.innerHTML = '<div class="empty">sin gastos</div>'; return; }
+    el.innerHTML = _gastos.map(g => `
+      <div class="list-item">
+        <span class="item-badge badge-${g.cat}">${g.cat}</span>
+        <span class="item-desc">${esc(g.desc)}</span>
+        <span class="item-who">${g.pagador}</span>
+        <span class="item-amount neg">${fmt(g.imp)}</span>
+        <button class="btn-del" onclick="delItem('gastos','${g.id}')" title="Eliminar">×</button>
+      </div>`).join('');
+    const total = _gastos.reduce((s,g) => s + g.imp, 0);
+    document.getElementById('gastos-total').textContent = 'Total: ' + fmt(total);
+  }
+
+  function renderMetrics() {
+    const cfg = loadCfg();
+    const socioA = cfg.socioA || 'Socio A';
+    const socioB = cfg.socioB || 'Socio B';
+
+    const ingresos = _caja.filter(c => c.tipo === 'entrada').reduce((s,c) => s + c.imp, 0);
+    const gastos = _gastos.reduce((s,g) => s + g.imp, 0);
+    const beneficio = ingresos - gastos;
+    const porSocio = beneficio / 2;
+
+    document.getElementById('m-ingresos').textContent = fmt(ingresos);
+    document.getElementById('m-gastos').textContent = fmt(gastos);
+
+    const mb = document.getElementById('m-beneficio');
+    mb.textContent = fmt(beneficio);
+    mb.className = 'metric-value ' + (beneficio >= 0 ? 'pos' : 'neg');
+
+    const ms = document.getElementById('m-socio');
+    ms.textContent = fmt(porSocio);
+    ms.className = 'metric-value ' + (porSocio >= 0 ? 'pos' : 'neg');
+
+    // Liquidación
+    const pagadoA = _gastos.filter(g => g.pagador === socioA || g.pagador === 'Socio A').reduce((s,g) => s + g.imp, 0);
+    const pagadoB = _gastos.filter(g => g.pagador === socioB || g.pagador === 'Socio B').reduce((s,g) => s + g.imp, 0);
+    const pagadoAmbos = _gastos.filter(g => g.pagador === 'ambos' || g.pagador === 'Ambos').reduce((s,g) => s + g.imp, 0);
+
+    const debeA = pagadoA + pagadoAmbos / 2;
+    const debeB = pagadoB + pagadoAmbos / 2;
+    const mitad = gastos / 2;
+    const desfase = debeA - mitad;
+
+    document.getElementById('l-total').textContent = fmt(beneficio);
+    document.getElementById('l-total').className = 'liq-val ' + (beneficio >= 0 ? 'pos' : 'neg');
+
+    const cobraA = porSocio - desfase;
+    const cobraB = porSocio + desfase;
+    document.getElementById('l-a').textContent = fmt(cobraA);
+    document.getElementById('l-b').textContent = fmt(cobraB);
+
+    const pill = document.getElementById('l-ajuste');
+    if (Math.abs(desfase) < 0.01) {
+      pill.className = 'deuda-pill ok';
+      pill.textContent = 'Gastos igualados';
+    } else if (desfase > 0) {
+      pill.className = 'deuda-pill';
+      pill.textContent = socioB + ' debe ' + fmt(Math.abs(desfase)) + ' a ' + socioA;
+    } else {
+      pill.className = 'deuda-pill';
+      pill.textContent = socioA + ' debe ' + fmt(Math.abs(desfase)) + ' a ' + socioB;
+    }
+
+    // actualizar nombres en liquidación
+    document.querySelector('#liq-bar .liq-item:nth-child(2) .liq-label').textContent = socioA + ' cobra';
+    document.querySelector('#liq-bar .liq-item:nth-child(3) .liq-label').textContent = socioB + ' cobra';
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Inicializar
+  const cfg = loadCfg();
+  if (cfg.apiKey && cfg.projectId) {
+    connect(cfg);
+  } else {
+    showConfig();
+  }
+
+  // Enter para añadir
+  document.getElementById('c-imp').addEventListener('keydown', e => { if (e.key === 'Enter') window.addCaja(); });
+  document.getElementById('g-imp').addEventListener('keydown', e => { if (e.key === 'Enter') window.addGasto(); });
+</script>
+</body>
+</html>
