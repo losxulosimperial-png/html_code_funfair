@@ -608,6 +608,13 @@
     const beneficio = ingresos - gastos;
     const porSocio = beneficio / 2;
 
+    // Fondos aportados por cada socio
+    const fondoA = _caja.filter(c => c.tipo === 'fondo' && c.quien === 'socioA').reduce((s,c) => s + c.imp, 0);
+    const fondoB = _caja.filter(c => c.tipo === 'fondo' && c.quien === 'socioB').reduce((s,c) => s + c.imp, 0);
+    const fondoAmbos = _caja.filter(c => c.tipo === 'fondo' && (c.quien === 'ambos' || !c.quien)).reduce((s,c) => s + c.imp, 0);
+    const fondoTotalA = fondoA + fondoAmbos / 2;
+    const fondoTotalB = fondoB + fondoAmbos / 2;
+
     document.getElementById('m-ingresos').textContent = fmt(ingresos);
     document.getElementById('m-gastos').textContent = fmt(gastos);
 
@@ -619,34 +626,33 @@
     ms.textContent = fmt(porSocio);
     ms.className = 'metric-value ' + (porSocio >= 0 ? 'pos' : 'neg');
 
-    // Liquidación
+    // Liquidación — gastos
     const pagadoA = _gastos.filter(g => g.pagador === socioA || g.pagador === 'Socio A').reduce((s,g) => s + g.imp, 0);
     const pagadoB = _gastos.filter(g => g.pagador === socioB || g.pagador === 'Socio B').reduce((s,g) => s + g.imp, 0);
     const pagadoAmbos = _gastos.filter(g => g.pagador === 'ambos' || g.pagador === 'Ambos').reduce((s,g) => s + g.imp, 0);
 
-    const debeA = pagadoA + pagadoAmbos / 2;
-    const debeB = pagadoB + pagadoAmbos / 2;
     const mitad = gastos / 2;
-    const desfase = debeA - mitad;
+    const desfaseGastos = (pagadoA + pagadoAmbos / 2) - mitad;
+
+    // Cobra = mitad del beneficio + devolución de fondo propio + ajuste por gastos adelantados
+    const cobraA = porSocio + fondoTotalA - desfaseGastos;
+    const cobraB = porSocio + fondoTotalB + desfaseGastos;
 
     document.getElementById('l-total').textContent = fmt(beneficio);
     document.getElementById('l-total').className = 'liq-val ' + (beneficio >= 0 ? 'pos' : 'neg');
 
-    const cobraA = porSocio - desfase;
-    const cobraB = porSocio + desfase;
     document.getElementById('l-a').textContent = fmt(cobraA);
     document.getElementById('l-b').textContent = fmt(cobraB);
 
+    // Mensaje de ajuste
     const pill = document.getElementById('l-ajuste');
-    if (Math.abs(desfase) < 0.01) {
+    const diff = cobraA - cobraB;
+    if (Math.abs(desfaseGastos) < 0.01 && Math.abs(fondoTotalA - fondoTotalB) < 0.01) {
       pill.className = 'deuda-pill ok';
-      pill.textContent = 'Gastos igualados';
-    } else if (desfase > 0) {
-      pill.className = 'deuda-pill';
-      pill.textContent = socioB + ' debe ' + fmt(Math.abs(desfase)) + ' a ' + socioA;
+      pill.textContent = 'Todo cuadrado';
     } else {
-      pill.className = 'deuda-pill';
-      pill.textContent = socioA + ' debe ' + fmt(Math.abs(desfase)) + ' a ' + socioB;
+      pill.className = 'deuda-pill ok';
+      pill.textContent = 'Incluye fondos y gastos';
     }
 
     // actualizar nombres en liquidación
