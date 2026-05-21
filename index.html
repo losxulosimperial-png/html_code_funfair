@@ -332,6 +332,7 @@
   <span class="logo">⬡ Feria</span>
   <div style="display:flex;align-items:center;gap:12px">
     <span><span class="status-dot" id="dot"></span><span id="status-label">desconectado</span></span>
+    <button class="btn-secondary" style="padding:5px 12px;font-size:11px" onclick="showConfig()">config</button>
   </div>
 </header>
 
@@ -365,14 +366,21 @@
       <div class="form-row">
         <input type="text" id="c-desc" placeholder="Concepto">
         <input type="number" id="c-imp" placeholder="€" min="0" step="0.01">
+      </div>
+      <div class="form-row">
         <select id="c-tipo">
           <option value="entrada">Entrada</option>
           <option value="fondo">Fondo</option>
           <option value="salida">Salida</option>
         </select>
+        <select id="c-quien">
+          <option value="ambos">Ambos</option>
+          <option value="socioA">Pablo</option>
+          <option value="socioB">Fran</option>
+        </select>
+        <button class="btn-add" onclick="addCaja()" id="btn-caja">+ Añadir</button>
       </div>
       <div class="form-row">
-        <button class="btn-add" onclick="addCaja()" id="btn-caja">+ Añadir</button>
         <span class="hint">Fondo = cambio inicial, no cuenta como ingreso</span>
       </div>
     </div>
@@ -428,15 +436,15 @@
   <div class="modal">
     <h2>Configuración Firebase</h2>
     <p>Necesitas un proyecto Firebase gratuito. <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → nuevo proyecto → Firestore Database (modo test) → Configuración del proyecto → SDK web → copia los valores aquí.</p>
-    <label>apikey</label>
+    <label>apiKey</label>
     <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
-    <label>feria-agosto</label>
+    <label>projectId</label>
     <input type="text" id="cfg-projectId" placeholder="mi-feria-2025">
-    <label>app-id</label>
+    <label>appId</label>
     <input type="text" id="cfg-appId" placeholder="1:123:web:abc">
-    <label>Pablo</label>
+    <label>Nombre Socio A</label>
     <input type="text" id="cfg-socioA" placeholder="Socio A">
-    <label>Fran</label>
+    <label>Nombre Socio B</label>
     <input type="text" id="cfg-socioB" placeholder="Socio B">
     <div class="modal-btns">
       <button class="btn-secondary" onclick="hideConfig()">Cancelar</button>
@@ -527,11 +535,12 @@
     const desc = document.getElementById('c-desc').value.trim();
     const imp = parseFloat(document.getElementById('c-imp').value);
     const tipo = document.getElementById('c-tipo').value;
+    const quien = document.getElementById('c-quien').value;
     if (!desc || isNaN(imp) || imp <= 0) return;
     if (!window._fb.db) { alert('Primero configura Firebase en "config"'); return; }
     const btn = document.getElementById('btn-caja');
     btn.disabled = true;
-    await addDoc(collection(window._fb.db, 'caja'), { desc, imp, tipo, ts: serverTimestamp() });
+    await addDoc(collection(window._fb.db, 'caja'), { desc, imp, tipo, quien, ts: serverTimestamp() });
     document.getElementById('c-desc').value = '';
     document.getElementById('c-imp').value = '';
     btn.disabled = false;
@@ -561,10 +570,12 @@
     const cfg = loadCfg();
     const el = document.getElementById('caja-list');
     if (_caja.length === 0) { el.innerHTML = '<div class="empty">sin movimientos</div>'; return; }
+    const quienLabel = (q) => q === 'socioA' ? (cfg.socioA || 'Socio A') : q === 'socioB' ? (cfg.socioB || 'Socio B') : q === 'ambos' ? 'Ambos' : '';
     el.innerHTML = _caja.map(c => `
       <div class="list-item">
         <span class="item-badge badge-${c.tipo}">${c.tipo}</span>
         <span class="item-desc">${esc(c.desc)}</span>
+        <span class="item-who">${c.quien ? quienLabel(c.quien) : ''}</span>
         <span class="item-amount ${c.tipo === 'entrada' ? 'pos' : c.tipo === 'salida' ? 'neg' : ''}">${fmt(c.imp)}</span>
         <button class="btn-del" onclick="delItem('caja','${c.id}')" title="Eliminar">×</button>
       </div>`).join('');
@@ -648,15 +659,12 @@
   }
 
   // Inicializar
-  const cfg = {
-    apiKey: "AIzaSyBNv_DhjXi0We_BVpT7TUqBAdLLSH8BN8A",
-    projectId: "feria-agosto",
-    appId: "1:59258069054:web:401cf2ec24436fa437f16f",
-    socioA: "Pablo",
-    socioB: "Fran"
-  };
-  saveCfgLocal(cfg);
-  connect(cfg);
+  const cfg = loadCfg();
+  if (cfg.apiKey && cfg.projectId) {
+    connect(cfg);
+  } else {
+    showConfig();
+  }
 
   // Enter para añadir
   document.getElementById('c-imp').addEventListener('keydown', e => { if (e.key === 'Enter') window.addCaja(); });
