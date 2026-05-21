@@ -429,11 +429,11 @@
   <div class="modal">
     <h2>Configuración Firebase</h2>
     <p>Necesitas un proyecto Firebase gratuito. <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> → nuevo proyecto → Firestore Database (modo test) → Configuración del proyecto → SDK web → copia los valores aquí.</p>
-    <label>AIzaSyBNv_DhjXi0We_BVpT7TUqBAdLLSH8BN8A</label>
+    <label>apikey</label>
     <input type="text" id="cfg-apiKey" placeholder="AIzaSy...">
     <label>feria-agosto</label>
     <input type="text" id="cfg-projectId" placeholder="mi-feria-2025">
-    <label>1:59258069054:web:401cf2ec24436fa437f16f</label>
+    <label>app-id</label>
     <input type="text" id="cfg-appId" placeholder="1:123:web:abc">
     <label>Pablo</label>
     <input type="text" id="cfg-socioA" placeholder="Socio A">
@@ -649,12 +649,15 @@
   }
 
   // Inicializar
-  const cfg = loadCfg();
-  if (cfg.apiKey && cfg.projectId) {
-    connect(cfg);
-  } else {
-    showConfig();
-  }
+  const cfg = {
+    apiKey: "AIzaSyBNv_DhjXi0We_BVpT7TUqBAdLLSH8BN8A",
+    projectId: "feria-agosto",
+    appId: "1:59258069054:web:401cf2ec24436fa437f16f",
+    socioA: "Pablo",
+    socioB: "Fran"
+  };
+  saveCfgLocal(cfg);
+  connect(cfg);
 
   // Enter para añadir
   document.getElementById('c-imp').addEventListener('keydown', e => { if (e.key === 'Enter') window.addCaja(); });
