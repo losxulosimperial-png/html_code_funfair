@@ -608,10 +608,11 @@
     const beneficio = ingresos - gastos;
     const porSocio = beneficio / 2;
 
-    // Fondos aportados por cada socio
+    // Fondos aportados por cada socio — se devuelven íntegros a quien los puso
     const fondoA = _caja.filter(c => c.tipo === 'fondo' && c.quien === 'socioA').reduce((s,c) => s + c.imp, 0);
     const fondoB = _caja.filter(c => c.tipo === 'fondo' && c.quien === 'socioB').reduce((s,c) => s + c.imp, 0);
     const fondoAmbos = _caja.filter(c => c.tipo === 'fondo' && (c.quien === 'ambos' || !c.quien)).reduce((s,c) => s + c.imp, 0);
+    // fondoAmbos sí se divide porque lo pusieron entre los dos
     const fondoTotalA = fondoA + fondoAmbos / 2;
     const fondoTotalB = fondoB + fondoAmbos / 2;
 
@@ -634,9 +635,9 @@
     const mitad = gastos / 2;
     const desfaseGastos = (pagadoA + pagadoAmbos / 2) - mitad;
 
-    // Cobra = mitad del beneficio + devolución de fondo propio + ajuste por gastos adelantados
-    const cobraA = porSocio + fondoTotalA - desfaseGastos;
-    const cobraB = porSocio + fondoTotalB + desfaseGastos;
+    // Cobra = mitad del beneficio + devolución íntegra del fondo propio + ajuste por gastos adelantados
+    const cobraA = porSocio + fondoA + fondoAmbos / 2 - desfaseGastos;
+    const cobraB = porSocio + fondoB + fondoAmbos / 2 + desfaseGastos;
 
     document.getElementById('l-total').textContent = fmt(beneficio);
     document.getElementById('l-total').className = 'liq-val ' + (beneficio >= 0 ? 'pos' : 'neg');
